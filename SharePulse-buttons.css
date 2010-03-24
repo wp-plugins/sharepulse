@@ -1,0 +1,36 @@
+#SharePulse { list-decoration:none; z-index: 100; position: relative; border-top: 1px dashed #cdcdcd; clear:both; padding: 0 0 5px 0; margin-bottom: 10px; text-align: center; background-color: #fff; }
+#SharePulse h5 { font-size:7px; text-align:right; padding:5px; clear: both; line-height: 9px; }
+
+
+#SharePulse .SharePulse { width: inherit; height:100px; border-bottom: 1px #cdcdcd dashed; }
+#SharePulse a { color: #333; }
+#SharePulse a:hover { text-decoration: none; color: #999; }
+
+#SharePulse .sharestats { padding:0; margin: 0 0 0 10px; float:left; width:80px; height: 100px; font-size: 10px; text-align: left; }
+
+div.sharestats .stat{
+  height:25px;
+  margin:0 auto;
+  width: 32px;
+  background-position: 0 5px;
+  background-repeat: no-repeat;
+  opacity: 1 !important;
+}
+
+a.count { line-height: 30px; width: 20px; text-indent: 0; text-align: center; font-family: verdana, arial sans serif; font-size: 10px; font-weight: bold; color: #ededed; text-shadow: 0 0 10px #000; display: block; width: 80px; height: 25px; }
+
+a .top { opacity: 0; margin: 0 10px; }
+a:hover .top { opacity: 1; }
+
+.twshare{ width: 80px; margin: 2px 0; }
+.fbshare{ width: 80px; margin: 2px 0; }
+.dgshare{ width: 80px; margin: 2px 0; }
+
+#SharePulse .SharePulse a:hover img.share-thumb { opacity:0.4; }
+#SharePulse .SharePulse img.share-thumb { display:block; margin: 10px 10px 10px 20px; position: absolute; left:0; width: 80px; height: 80px; z-index: 5; -moz-box-shadow: 2px 2px 3px #333; -webkit-box-shadow: 2px 2px 3px #333; *border: 1px solid #333; }
+#SharePulse .SharePulse .title { width: 95px; float: left; margin: 0 0 0 5px  }
+#SharePulse .SharePulse h4 { font-family: Georgia, Palatino Linotype, serif; font-size: 13px; line-height: 15px; float: left; padding: 16px 5px 0 0; margin: 5px auto; width: 90px; height:62px; overflow:hidden; }
+
+#SharePulse .SharePulse .total { position: absolute; z-index: 10; width:80px; margin: 10px 10px 10px 20px;; text-align: center; }
+#SharePulse .SharePulse .total h6, #SharePulse .SharePulse .total_sm h6 { font-family: Arial Black, Gadget, sans-serif; color: transparent; font-size: 35px; font-weight: bold; line-height: 80px; margin: 0; }
+#SharePulse .SharePulse a:hover .total h6 { color: #ededed; text-shadow: 0 0 10px #000; }

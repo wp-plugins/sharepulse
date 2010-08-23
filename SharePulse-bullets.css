@@ -2,7 +2,7 @@
 #SharePulse h5 { font-size:7px; text-align:right; padding:5px; clear: both; line-height: 9px; }
 
 
-#SharePulse .SharePulse { width: inherit; height:100px; border-bottom: 1px #cdcdcd dashed; }
+#SharePulse .SharePulse { position:relative; width: inherit; height:100px; border-bottom: 1px #cdcdcd dashed; }
 #SharePulse a { color: #333; }
 #SharePulse a:hover { text-decoration: none; color: #999; }
 

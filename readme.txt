@@ -14,7 +14,7 @@ SharePulse rank's, in a sidebar widget, your site's most popular articles of the
 
 == Description ==
 
-Inspired by the â'Most shared this week Powered by TweetMeme", widget found on the single article pages on Mashable.com, this plugin takes the concept one step farther...
+Inspired by the "Most shared this week Powered by TweetMeme", widget found on the single article pages on Mashable.com, this plugin takes the concept one step farther...
 
 Since adding "ReTweet" buttons to my site I noticed a sharp increase in the amount of articles that were tweeted and retweeted. The same holds true with your most popular posts, your readers want to know what your best content is, and what others think they should be reading. If you show them what other readers like it will create a positive reinforcing cycle and make those posts even more popular and the reach of your site will grow.
 

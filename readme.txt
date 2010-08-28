@@ -7,7 +7,7 @@ Tags: Digg, Facebook, share statistics, Social Media, social widget, Stats, Twit
 Author URI: http://www.jackreichert.com/
 Author: Jack Reichert
 Requires at least: 2.7
-Tested up to: 2.9.2
+Tested up to: 3.0.1
 Stable tag: 1.1.1
 
 SharePulse rank's, in a sidebar widget, your site's most popular articles of the week. Stats are tabulated from the Twitter, Digg and Facebook APIs.

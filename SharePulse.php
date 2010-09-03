@@ -3,7 +3,7 @@
 Plugin Name: Share Pulse
 Plugin URI: http://www.jackreichert.com/plugins/sharepulse/
 Description: SharePulse rank's, in a sidebar widget, your site&#039;s most popular articles of the week. Stats are tabulated from the Twitter, Digg and Facebook APIs. Note: Due to the reliance on external APIs this plugin may take a little longer to activate than you expect.
-Version: 1.1
+Version: 1.1.1
 Author: Jack Reichert
 Author URI: http://www.jackreichert.com/
 License: GPLv2

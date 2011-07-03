@@ -1,17 +1,17 @@
 <?php
 /*
-Plugin Name: Share Pulse
-Plugin URI: http://www.jackreichert.com/plugins/sharepulse/
-Description: SharePulse rank's, in a sidebar widget, your site&#039;s most popular articles of the week. Stats are tabulated from the Twitter, Digg and Facebook APIs. Note: Due to the reliance on external APIs this plugin may take a little longer to activate than you expect.
-Version: 1.1.1
-Author: Jack Reichert
-Author URI: http://www.jackreichert.com/
-License: GPLv2
+	Plugin Name: Share Pulse
+	Plugin URI: http://www.jackreichert.com/plugins/sharepulse/
+	Description: SharePulse rank&#39;s, in a sidebar widget, your site&#39;s most popular articles of the week. Stats are tabulated from most commented posts as well as the Twitter and Facebook APIs.
+	Author: Jack Reichert
+	Version: 2.0.1
+	Author URI: http://www.jackreichert.com/
+	License: GPLv2
 
   Copyright 2010  Jack Reichert  (email : contact@jackreichert.com)
 
     This program is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License, version 3, as 
+    it under the terms of the GNU General Public License, version 2, as 
     published by the Free Software Foundation.
 
     This program is distributed in the hope that it will be useful,
@@ -24,465 +24,359 @@ License: GPLv2
     or write to the Free Software Foundation, Inc., 
     51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
     
-*/
+*/ 
+class sharePulse_widget extends WP_Widget {
 
+	function sharePulse_widget() { 	// The widget construct. Initiating our plugin data.
+		$widgetData = array( 'classname' => 'sharePulse_widget', 'description' => __( 'rank&#39;s, in a sidebar widget, your site&#39;s most popular articles of the week.' ) );
+		$this->WP_Widget('sharePulse_widget', __('Share Pulse'), $widgetData);
 
-//Activate Plugin
-ini_set( "display_errors", 0);
+	} 
 
-add_action("widgets_init", array('Share_Pulse', 'register'));
-register_activation_hook( __FILE__, array('Share_Pulse', 'activate'));
-register_deactivation_hook( __FILE__, array('Share_Pulse', 'deactivate'));
-class Share_Pulse { //creates database for SP if it doesn't exist.
-  function activate(){
-  	$data = reset_data();
-	$data['SharePulse'] = find_pulse($data);
-    if ( ! get_option('share_pulse')){
-      	add_option('share_pulse' , $data);
-    } else {
-      	update_option('share_pulse' , $data);
-    }
-  }
-  function deactivate(){ //so it won't leave $#!+ on your server
-    delete_option('share_pulse');
-  }
-  function control(){ //control panel
-  $data = get_option('share_pulse');
-  ?>
-  <p><label>Header text: <input name="share_pulse_heading"
-type="text" size="20" value="<?php echo stripcslashes($data['heading']); ?>" /></label></p>
-  <p><label>Create thumbnails? <input name="share_pulse_sp_Thumbs"
-type="checkbox" value="yes" <?php echo ( $data['sp_Thumbs'] == 'yes' ) ? 'checked="checked"' : ''; ?>" /></label> (wider view)</p>
-<p>Theme: 
-<select name="share_pulse_theme">
-<option value="buttons" <?php echo ($data['theme']=='buttons')?'selected="selected"':''; ?>>Social.me </option>
-<option value="bullets" <?php echo ($data['theme']=='bullets')?'selected="selected"':''; ?>>Bullet Holes </option>
-</select>
-<br /><span style="font-size:8px;">"Bullet Hole" icons designed by <a href="http://www.productivedreams.com" target="_blank">Gopal Raju</a>.<br/>"Social.me" icons designed by <a href="http://jwloh.deviantart.com/art/Social-me-90694011" target="_blank">jwloh</a>.</span>
-</p>
-  <p><label>Twitter Source (@myHandle)<input name="share_pulse_tw_Source"
-type="text" value="<?php echo $data['tw_Source']; ?>" /></label></p>
-    <p><label>Awe.sm api key <input name="share_pulse_awesm_api"
-type="text" value="<?php echo $data['awesm_api']; ?>" /></label></p>
-<p>Display stats from the past 
-<select name="share_pulse_date_range">
-<option value="day" <?php echo ($data['date_range']=='day')?'selected="selected"':''; ?>>day </option>
-<option value="week" <?php echo ($data['date_range']=='week')?'selected="selected"':''; ?>>week </option>
-<option value="month" <?php echo ($data['date_range']=='month')?'selected="selected"':''; ?>>month </option>
-</select></p>
-  <p><label>Number of posts to display <input name="share_pulse_sp_Count"
-type="text" size="2" value="<?php echo $data['sp_Count']; ?>" /></label><br />
-	<span style="font-size:8px;">Will adjust due to max available via APIs. Will use random posts to fill in amount.</span></p>
-  <p style="font-size:11px;"><label>Allow linkback at bottom of widget? <input name="share_pulse_link"
-type="checkbox" value="yes" <?php echo ( $data['link'] == 'yes' ) ? 'checked="checked"' : ''; ?>" /></label></p>
-  <p style="font-size:9px;"><a href="http://www.jackreichert.com/plugins/sharepulse/" target="_blank">SharePulse</a> was developed by <a href="http://www.jackreichert.com" target="_blank">Jack Reichert</a> is licensed under <a href="http://codex.wordpress.org/GPL" target="_blank">GPLv2</a>.<br/><br/>Saving will reload APIs and may take a little while.</p>
-  <?php
-   if (isset($_POST['share_pulse_tw_Source'])||isset($_POST['share_pulse_heading'])||isset($_POST['share_pulse_sp_Count'])||isset($_POST['share_pulse_sp_Thumbs'])||isset($_POST['share_pulse_link'])||isset($_POST['share_pulse_date_range'])||isset($_POST['share_pulse_theme'])){
-    $data['heading'] = attribute_escape($_POST['share_pulse_heading']);   
-    $data['tw_Source'] = attribute_escape($_POST['share_pulse_tw_Source']);
-    $data['awesm_api'] = attribute_escape($_POST['share_pulse_awesm_api']);
-    $data['sp_Count'] = attribute_escape($_POST['share_pulse_sp_Count']);
-	$data['sp_Thumbs'] = ( attribute_escape($_POST['share_pulse_sp_Thumbs']) == 'yes' ) ? 'yes' : 'no';
-	$data['link'] = ( attribute_escape($_POST['share_pulse_link']) == 'yes' ) ? 'yes' : 'no';
-	$data['date_range'] = attribute_escape($_POST['share_pulse_date_range']); 
-	$data['theme'] = attribute_escape($_POST['share_pulse_theme']); 
-    $data['sp_Count'] = ( $data['sp_Count'] > 0 ) ? $data['sp_Count'] : 1; /*make sure (25 >= #posts requested > 0) */
-    $data['sp_Count'] = ( $data['sp_Count'] <= $data['SharePulse']['max'] ) ? $data['sp_Count'] : ( $data['SharePulse']['max'] == 0 ) ? $data['sp_Count'] : $data['SharePulse']['max'];
-	if ($data['sp_Thumbs']=='yes') { $data['SharePulse'] = get_SP_thumbs($data['SharePulse'], $data['sp_Thumbs']); }  
-	$data['sp_Time'] = time();
-	$data['SharePulse'] = find_pulse($data);  
-	$data = array( 'heading' => $data['heading'], 'sp_Thumbs' => $data['sp_Thumbs'] ,'tw_Source' => $data['tw_Source'], 'SharePulse' => $data['SharePulse'], 'sp_Time' => $data['sp_Time'], 'sp_Count' => $data['sp_Count'], 'link'=>$data['link'], 'date_range'=>$data['date_range'], 'theme'=>$data['theme'], 'awesm_api'=>$data['awesm_api'] );
-    update_option('share_pulse', $data);
-  }
-}
-  function widget($args){ //the sidebar widget
-  	$data = get_option('share_pulse');
-    echo $args['before_widget'];
-    echo $args['before_title'] . stripcslashes($data['heading']) . $args['after_title'];
-    SharePulse();
-    echo $args['after_widget'];
-  }
-  function register(){ //register widget
-    register_sidebar_widget('Share Pulse', array('Share_Pulse', 'widget'));
-    register_widget_control('Share Pulse', array('Share_Pulse', 'control'));
-  }
-}
-
-function reset_data() { //resets data in $data, sets structure
-
-	$d = array( 'heading' => "Most Shared Posts", 'sp_Thumbs' => 'yes', 'tw_Source' => 'SharePulse', 'SharePulse' => array(), 'sp_Time' => 0, 'sp_Count' => 5, 'link'=>'yes', 'date_range'=>'week', 'theme'=>'buttons', 'awesm_api'=>'' );
-
-return $d;
-}
-
-function get_diggs($date_range) {
-	ini_set('user_agent', 'SharePulse/1.0');
-	switch ($date_range) {
-    case 'day':
-    	$window = time()-86400;
-        break;
-    case 'week':
-        $window = time()-604800;
-        break;
-    case 'month':
-        $window = time()-2629743; 
-        break;
-    default:
-    	$window = time()-604800;
-        break;
-	}	
-	$domain = get_bloginfo('url');
-	$reqUrl = 'http://services.digg.com/1.0/endpoint?method=story.getAll&type=xml&count=25&domain='.substr($domain,7).'&min_submit_date='.$window;
-	$digg = simplexml_load_file($reqUrl);
-	$diggs = array();
-	$i=0; 
-	foreach( $digg->story as $digg_story ){ //extracts relevant tags
-		$url = (string)$digg_story['link']; 
-		if ( url_to_postid($url) != '' ) {
-			$postID = url_to_postid($url);
-			$matches=0;
-			for ($k=0; $k<$i; $k++) {
-				$matches = ( $diggs[$k]['postID'] == $postID ) ? $k : $matches+0;
-			}
-			if ( $matches == 0 ) { 
-				$diggs[$i]['url'] = $url;
-				$diggs[$i]['postID'] = $postID;
-				$diggs[$i]['dg'] = (int)$digg_story['diggs'];
-				$diggs[$i]['tw'] = 0;
-				$diggs[$i]['total'] = $diggs[$i]['tw']+$diggs[$i]['dg'];
-				$i++;
-			}
-		} else echo (time()-604800).'-'.$date.' '.$digg_story->title;
-	}
-	$diggs['max'] = $i;	
-return $diggs;
-}	
-
-function get_tweets($date_range) {
-	//calls tweetmeme api
-	$domain = get_bloginfo('url');
-	switch ($date_range) {
-    case 'day':
-    	$window = 'd';
-        break;
-    case 'week':
-        $window = 'w';
-        break;
-    case 'month':
-        $window = 'm'; 
-        break;
-    default:
-    	$window = 'w';
-        break;
-	}	
-	$url = substr($domain,11);
-	$reqUrl = 'http://otter.topsy.com/search.json?q=site:'.$url.'&window='.$window; //have window set to accomodate for slow sites
-	$topsy = file_get_contents($reqUrl);
-	$topsy = json_decode($topsy);
-	$i=0; // # of stories colllected
-	foreach( $topsy->response->list as $tw_story ){ //extracts relevant tags
-		$url = (string) $tw_story->url;
-		if ( url_to_postid($url) != '' ) {
-			$postID = url_to_postid($url);
-			$matches=0;
-			for ($k=0; $k<$i; $k++) {
-				$matches = ( $tweets[$k]['postID'] == $postID ) ? $k : $matches+0;
-			}
-			if ( $matches == 0 ) { 
-				$tweets[$i]['url'] = $url;
-				$tweets[$i]['postID'] = $postID;
-				$tweets[$i]['tw'] = (int) $tw_story->trackback_total;
-				$tweets[$i]['dg'] = 0;
-				$tweets[$i]['total'] = $tweets[$i]['tw']+$tweets[$i]['dg'];
-				$i++;
-			}
+	// Displays the widget on the screen.
+	function widget($args, $instance) { 
+		extract($args);
+		$data  = get_option('sharePulse'); 
+		// wont show any widget if there is no data in the selected date range. Notifies use in widget backend.
+		if (count($data[$instance['date_range']]) != 0){ 
+			echo $before_widget;
+			echo $before_title . $instance['title'] . $after_title; 
+			$this->SharePulse_display($instance);
+			echo $after_widget;
 		}
 	}
 	
-	$tweets['max'] = $i;
-return $tweets;
-}
-
-function combine ( $d_tw, $d_dg ) {
-	for ( $l = 0; $l < $d_tw['max']; $l++ ) {
-		$d_tw[$l]['matched']='no';
+	function update($new_instance, $old_instance) { // Updates the settings.
+		return $new_instance;
 	}
-	$i = 0; $m=0; $n=0;
 	
-	for ( $l = 0; $l < $d_dg['max']; $l++ ) {
-		$k = -1;
-		$current = (int)$d_dg[$l]['postID'];			
-
-		for ( $j = 0; $j < $d_tw['max']; $j++ ) {
-			$master = (int)$d_tw[$j]['postID'];
-			if ( $current == $master ) {
-				$k = $j; 
-			}
+	function form($instance) {	// The admin form. 
+		$defaults = array( 'title' => 'Share Pulse', 'via' => 'SharePulse', 'awesm_key' => '', 'date_range' => 'all', 'amount' => '4', 'linklove' => 'yes' );
+		$data  = get_option('sharePulse'); 
+		$instance = wp_parse_args($instance, $defaults); ?>
+		<div id="sharePulse-admin-panel">
+			<p>
+				<label for="<?php echo $this->get_field_id('title'); ?>">Widget title:</label>
+				<input type="text" class="widefat" name="<?php echo $this->get_field_name('title'); ?>" id="<?php echo $this->get_field_id('title'); ?>" value="<?php echo $instance['title']; ?>" />
+			</p>
+			<p>
+				<label for="<?php echo $this->get_field_id('date_range'); ?>">Date range:</label>
+				<select name="<?php echo $this->get_field_name('date_range'); ?>" id="<?php echo $this->get_field_id('date_range'); ?>">
+					<option value="day" <?php echo (($instance['date_range'] == 'day') ? 'selected="true"' : '' ); ?>>Day</option>
+					<option value="week" <?php echo (($instance['date_range'] == 'week') ? 'selected="true"' : '' ); ?>>Week</option>
+					<option value="month" <?php echo (($instance['date_range'] == 'month') ? 'selected="true"' : '' ); ?>>Month</option>
+					<option value="all" <?php echo (($instance['date_range'] == 'all') ? 'selected="true"' : '' ); ?>>All Time</option>
+				</select><br/>
+				<?php if (count($data[$instance['date_range']]) == 0){ echo 'There is not enough data to display the results for the date range "'.$instance['date_range'].'".'; } ?>
+			</p>			
+			<p>
+				<label for="<?php echo $this->get_field_id('amount'); ?>">Number of posts to display:</label>
+				<input type="text" size="2" name="<?php echo $this->get_field_name('amount'); ?>" id="<?php echo $this->get_field_id('amount'); ?>" value="<?php echo $instance['amount']; ?>" />
+			</p>
+			<p>
+				<label for="<?php echo $this->get_field_id('via'); ?>">Tweeted via: (@myHandle)</label>
+				<input type="text" class="widefat" name="<?php echo $this->get_field_name('via'); ?>" id="<?php echo $this->get_field_id('via'); ?>" value="<?php echo $instance['via']; ?>" />
+			</p>	
+			<p>
+				<label for="<?php echo $this->get_field_id('awesm_key'); ?>">Awe.sm API key:</label>
+				<input type="text" class="widefat" name="<?php echo $this->get_field_name('awesm_key'); ?>" id="<?php echo $this->get_field_id('awesm_key'); ?>" value="<?php echo $instance['awesm_key']; ?>" />
+			</p>	
+			<p style="font-size:11px; text-align:left;">
+				<label for="<?php echo $this->get_field_id('linklove'); ?>">Linkback to show your thanks? </label>			
+				<select name="<?php echo $this->get_field_name('linklove'); ?>" id="<?php echo $this->get_field_id('linklove'); ?>">
+					<option value="yes" <?php echo (($instance['linklove'] != 'no') ? 'selected="true"' : '' ); ?>>Yes</option>
+					<option value="no" <?php echo (($instance['linklove'] == 'no') ? 'selected="true"' : '' ); ?>>No</option>
+				</select>
+			</p>			
+			<p style="font-size:9px;"><a href="http://www.jackreichert.com/plugins/sharepulse/" target="_blank">SharePulse</a> was developed by <a href="http://www.jackreichert.com" target="_blank">Jack Reichert</a> is licensed under <a href="http://codex.wordpress.org/GPL" target="_blank">GPLv2</a>.<br/><br/>
+			Twitter stats powered by: <a href="http://topsy.com" title="Topsy" target="_blank"><img src="http://corp.topsy.com/wp-content/uploads/2010/10/powered_v3_92.png" align="right" alt="Topsy" /></a></p>
+		</div>
+<?php	} 
+	
+		function SharePulse_display($instance){
+			$data = get_option('sharePulse'); 
+			$curLenth = count($data[$instance['date_range']]);
+			$numPosts = (($curLenth < $instance['amount']) ? $curLenth : $instance['amount']); // Checks to see if there are enough to display
+			for ( $i=0; $i < $numPosts; $i++ ): 
+				$url_title = urlencode($data[$instance['date_range']][$i]['title']); 
+				$url_permalink = urlencode($data[$instance['date_range']][$i]['url']);
+				$api_key = ( $instance['awesm_api'] != '' )?'api_key='.$instance['awesm_api'].'&':'';
+				$awesm = 'http://create.awe.sm/url/share?'.$api_key.'version=1&amp;share_type=twitter&amp;create_type=sharelink&amp;target='.$url_permalink.'&amp;destination=http://twitter.com/?status=RT+%40'.$instance['via'].'+'.$url_title.'+AWESM_TARGET'; ?>
+				<div class="SharePulse">
+					<div class="total"><?php echo $data[$instance['date_range']][$i]['total']; ?></div>
+					<span class="title"><a href="<?php echo $data[$instance['date_range']][$i]['url']; ?>"><?php echo $data[$instance['date_range']][$i]['title']; ?></a></span>
+					<div class="stats">
+						 &bull;&nbsp;<a href="<?php echo $data[$instance['date_range']][$i]['url']; ?>#comments" title="leave a comment">Comments:&nbsp;<?php echo $data[$instance['date_range']][$i]['comments']; ?></a> 
+						 &bull;&nbsp;<a href="<?php echo $awesm; ?>" target="_blank" title="tweet this">Twitter:&nbsp;<?php echo $data[$instance['date_range']][$i]['tweets']; ?></a>
+						 &bull;&nbsp;<a href="http://www.facebook.com/sharer.php?u=<?php echo $url_permalink; ?>&amp;t=<?php echo $url_title; ?>" target="_blank" title="share on facebook">Facebook:&nbsp;<?php echo $data[$instance['date_range']][$i]['fb']; ?></a>
+					</div>
+				</div>
+	<?php	endfor;
+		echo ($instance['linklove']=='yes')?'<h5>Powered by: <a href="http://www.jackreichert.com/plugins/sharepulse/" title="Share Pulse" target="_blank">SharePulse</a></h5>':'<h5 class="SharePulse">Powered by: SharePulse</h5>';
 		}
+	
+}
 
-		if ( $k != -1 ) {
-			$d_tw[$k]['dg'] = $d_dg[$k]['dg'];
-			$d_tw[$k]['total'] = $d_tw[$k]['tw']+$d_tw[$k]['dg'];
-			$d_tw[$k]['matched'] = 'yes';
-			$n++;
-		} else {
-			$i++;
-			$m = $d_tw['max']-1+$i;
-			$d_tw[$m] = $d_dg[$l];
-			$url = $d_tw[$m]['url'];
-			$d_tw[$m]['tw'] = get_twCount_by_url($url);
-			$d_tw[$m]['total'] = $d_tw[$m]['tw']+$d_tw[$m]['dg'];
-			$n++;			
+
+class sharePulse_getData {
+	function sharePulse_getData(){
+		$this->url 	= ereg_replace("(https?)://(www.)", "", get_bloginfo('url'));
+		$this->date_range = array('day','week','month','all');
+		$tweets 	= $this->getTopTweets($this->url);
+		$comments 	= $this->getTopComments();
+		$combined 	= $this->combineStats($tweets,$comments);
+		$combined['everything']	= $this->getMissingFbShares($combined['everything']);
+		$combined['everything'] = $this->getTotals($combined['everything']);
+		foreach ($combined as $key => $value ){ 
+			$combined[$key] = $this->fillInMissing($combined[$key],$combined['everything']);
+			$combined[$key]	= $this->sortStats($combined[$key]);
 		}
+		update_option('sharePulse', $combined);
 	}
 	
-	for ( $l = 0; $l < $d_tw['max']; $l++ ) {
-		if ( $d_tw[$l]['matched']=='no' ) {
-			$url = $d_tw[$l]['url'];
-			$d_tw[$l]['dg'] = get_diggCount_by_url($url);
-			$d_tw[$l]['total'] = $d_tw[$l]['tw']+$d_tw[$l]['dg'];
-		}
-	}
-	$d_tw['max'] = $n+$l;
-	
-return $d_tw;
-}
-
-function get_facebook_shares ($d) {
-	for ( $i = 0; $i < $d['max']; $i++ ) {
-		$url = $d[$i]['url'];
-		usleep(330000);
-		$d[$i]['fb'] = get_fbCount_by_url($url);
-		$d[$i]['total'] = $d[$i]['tw']+$d[$i]['dg']+$d[$i]['fb'];
-	}
-
-return $d;
-}
-
-function get_twCount_by_url ($url) {
-	
-	$reqUrl = 'http://otter.topsy.com/stats.json?url='.urlencode( $url );
-	$topsy = file_get_contents($reqUrl);
-	$topsy = json_decode($topsy);
-	$tw_Num = (int) $topsy->response->all;
-	
-return $tw_Num;
-}
-
-function get_fbCount_by_url ($url) {
-
-	$reqUrl = 'http://api.facebook.com/restserver.php?method=links.getStats&urls='.urlencode( $url );
-	$facebook_share = simplexml_load_file($reqUrl);
-	$fb_Num = (int)$facebook_share->link_stat->total_count;
-
-return $fb_Num;
-}
-
-
-function get_diggCount_by_url ($url) {
-	
-	ini_set('user_agent', 'SharePulse/1.0');
-	
-	$domain = get_bloginfo('url');
-	$reqUrl = 'http://services.digg.com/1.0/endpoint?appkey='.urlencode( $domain ).'&method=search.stories&query='.urlencode( $url );
-	$digg = simplexml_load_file($reqUrl);
-
-	$digg_Num = (int)$digg->story['diggs'];
-	
-return $digg_Num;
-}
-
-function sort_posts ($d) {
-	$new = array();
-	for ( $l = 0; $l < $d['max']; $l++ ) {
-		$k = 0;
-		$heighest = 0;
-		for ( $j = 0; $j < $d['max']; $j++ ) {
-			$current = (int)$d[$j]['total'];
-			if ( $current >= $heighest ) {
-				$heighest = $current;
-				$k = $j;
-			}
-		}
-		if ( $d[$k]['total'] != -2 ){
-		$new[$l] = $d[$k];
-		$d[$k]['total'] = -2;
-		$heighest = 0;}
-	}
-	$new['max'] = $d['max'];
-return $new;
-}
-	
-function get_SP_thumbs ($d,$thumbs) {
-	for ( $i = 0; $i < $d['max']; $i++ ) {
-		$temp_query = $wp_query; //WP loop
-		query_posts("p=".$d[$i]['postID']);
-		if (have_posts()) : while (have_posts()) : the_post();
-			if ( $thumbs == 'yes' ) :
-				$content = get_the_content();
-				$output = preg_match_all('/<img.+src=[\'"]([^\'"]+)[\'"].*>/i', $content, $matches);
-				$domain = get_bloginfo('url');
-				$domain_comp = '['.substr($domain,7).']';
-				if ( $matches [1][0] != '' && preg_match( $domain_comp , $matches [1][0] )) {
-					$d[$i]['img'] = $domain.'/wp-content/plugins/sharepulse/timthumb.php?src='.$matches[1][0].'&w=80&h=80&zc=1&q=100';
-				} else {
-					$d[$i]['img'] = $domain.'/wp-content/plugins/sharepulse/images/default.jpg';
-				}
-			endif;
-			$d[$i]['title'] = get_the_title();
-			$d[$i]['excerpt'] = get_the_excerpt();
-			$d[$i]['date'] = get_the_time('U');
-		endwhile; endif;
-		$wp_query = $temp_query;
-	}
-return $d;
-}
-	
-function get_rand ($d) {
-
-	$num = $d['sp_Count'] - $d['SharePulse']['max'];
-	$i = 0;
-	
-	$rand_posts = get_posts('numberposts='.$num.'&orderby=rand');
-	foreach( $rand_posts as $post ) :
-
-		$rand[$i]['url'] = get_permalink($post->ID);
-		$rand[$i]['postID'] = $post->ID;
-		$rand[$i]['tw'] = 0;
-		$rand[$i]['dg'] = 0;
-		$rand[$i]['fb'] = 0;		
-		$rand[$i]['total'] = 0;
+	/** Topsy **/
+	function getTopTweets($url){
 		
-		$i++;
-	endforeach;
-	$rand['max'] = $i+1;
+		foreach ($this->date_range as $r){
+			$rs = substr($r,0,1);
+			$results = $this->topsyAPI($url,$rs);
+			$tweets[$r] = $this->extractTwitterTags($results);
 
-return $rand;
-}
-	
-function find_pulse ($d) {
-
-	$digg_tally = get_diggs($d['date_range']);
-	$tweet_tally = get_tweets($d['date_range']);	
-	$combined = combine( $tweet_tally, $digg_tally );
-	if ( $digg_tally['max'] + $tweet_tally['max'] < $d['sp_Count'] ) {
-		$d['SharePulse'] = $combined;
-		$rand =	get_rand ($d);
-		$combine = combine($combined,$rand);
-		$sorted = sort_posts($combine);
-	} else {
-		$facebooked = get_facebook_shares($combined);
-		$sorted = sort_posts($facebooked);
+		}
+		
+	return $tweets;	
 	}
-	$pulse = get_SP_thumbs($sorted, $d['sp_Thumbs']);
+	function topsyAPI($url,$window){
+		$request = 'http://otter.topsy.com/search.json?q=site:'.$url.'&window='.$window; ; 
+		try {
+		    $result = json_decode(file_get_contents(stripslashes($request)));
+		} catch (Exception $e) {
+		  //  echo 'Caught exception: ',  $e->getMessage(), "\n";
+		  $result = array();
+		}
+		
 	
-return $pulse;
-}
+	return $result;
+	}
+	function get_twCount_by_url($url) {
+		$reqUrl = 'http://otter.topsy.com/stats.json?url='.urlencode( $url );
+		try {
+		    $topsy = file_get_contents($reqUrl);
+		} catch (Exception $e) {
+		  //  echo 'Caught exception: ',  $e->getMessage(), "\n";
+		  $result = array();
+		}		
+		$topsy = json_decode($topsy);
+		$tw_Num = (int) $topsy->response->all;
+		
+	return $tw_Num;
+	}
+	function extractTwitterTags($tweets) {
+		foreach( $tweets->response->list as $key=>$story ){ //extracts relevant tags
+			$tweetStories[$key]['title'] = $story->title;
+			$tweetStories[$key]['comments'] = 0;
+			$tweetStories[$key]['tweets'] = $story->hits;
+			$tweetStories[$key]['id'] = url_to_postid($story->url);
+			$tweetStories[$key]['url'] = ($tweetStories[$key]['id'] != 0) ? get_permalink($tweetStories[$key]['id']) : $story->url;			
+			if ($tweetStories[$key]['id'] > 0) { $tweetStories[$key]['title'] = get_the_title($tweetStories[$key]['id']); }
+		}	
+		if ($tweetStories == NULL){ $tweetStories[]=array('title'=>'empty','url'=>'','comments'=>'','tweets'=>'','id'=>''); }
+	return $tweetStories;		
+	}	
+	
+	
+	/** Facebook **/
+	function get_fbCount_by_url($url) {
+		$reqUrl = 'http://api.facebook.com/restserver.php?method=links.getStats&urls='.urlencode( $url );
+		try {
+		    $facebook_share = simplexml_load_file($reqUrl);
+		} catch (Exception $e) {
+		  //  echo 'Caught exception: ',  $e->getMessage(), "\n";
+		  $result = array();
+		}		
+		$fb_Num = (int)$facebook_share->link_stat->total_count;
+	
+	return $fb_Num;
+	}	
+	function getMissingFbShares($data){
+		foreach ($data as $key => $story){
+			try{ $data[$key]['fb'] = $this->get_fbCount_by_url($story['url']); }
+			catch(Exception $e){ $data[$key]['fb'] = 0; }
+		}	
+		
+	return $data;
+	}
+	
+	
+	/** Comments **/
+	function getTopComments(){
+		foreach ($this->date_range as $r){		
+			$results = $this->mostCommented(10,$r);
+			$comments[$r] = $this->extractCommentTags($results);
+		}
+	return $comments;	
+	}
+	function mostCommented($no_posts = '10', $duration='month') {
+		global $wpdb;
+		// duration should be DAY WEEK MONTH OR YEAR
+		$querystr = "SELECT comment_count, ID, post_title FROM $wpdb->posts wposts, $wpdb->comments wcomments WHERE wposts.ID = wcomments.comment_post_ID AND wposts.post_status='publish' AND wcomments.comment_approved='1' ".(($duration != 'all') ? "AND wcomments.comment_date > DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 1 ".$duration.")" : "")." GROUP BY wposts.ID ORDER BY comment_count DESC LIMIT 0 ,  10";
 
-function SharePulse() {
-	if ( ! get_option('share_pulse')){
-		$data = reset_data();
-		$data['SharePulse'] = find_pulse($data);
-		add_option('share_pulse' , $data); 
-		echo 'dbfail';
-	} else {
-		$data = get_option('share_pulse');
-		if(time()-180 > $data['sp_Time']){
-			$data['sp_Time'] = time();
-			$data['SharePulse'] = find_pulse($data);
-			update_option('share_pulse' , $data);
+		$most_commented = $wpdb->get_results($querystr);
+
+	return $most_commented;
+	}
+	function getSingleComments($postID) {
+		global $wpdb;
+		$pop = $wpdb->get_results("SELECT post_title, comment_count FROM {$wpdb->prefix}posts WHERE id=".$postID);
+
+	return intval($pop[0]->comment_count);
+	}	
+	function extractCommentTags($comments){
+		$i=0;
+		foreach($comments as $comment){
+			$data[$i]['title'] = $comment->post_title;
+			$data[$i]['comments'] = intval($comment->comment_count);
+			$data[$i]['tweets'] = 0;
+			$data[$i]['id'] = $comment->ID;
+			$data[$i]['url'] = get_permalink($comment->ID);
+			$i++;
+		}
+		if ($data == NULL){ $data[]=array('title'=>'empty','url'=>'','comments'=>'','tweets'=>'','id'=>''); }
+	return $data;
+	}
+	
+	
+	/** Tabulate **/
+	function combineStats($tweets,$comments){
+	
+		foreach ($this->date_range as $r){	
+	
+			foreach($tweets[$r] as $tweetKey => $tweetValue){
+				if ($tweetValue['title'] === 'empty'){ unset($tweets[$r][$tweetKey]); }
+				foreach($comments[$r] as $commentKey => $commentValue){
+					if( strstr($tweetValue['title'],$commentValue['title'])!=false ){
+						$comments[$r][$commentKey]['tweets'] = $tweetValue['tweets'];
+						unset($tweets[$r][$tweetKey]);
+					}
+					similar_text($commentValue['title'], $tweetValue['title'],$sim);
+					if ($sim > 70){
+						$comments[$r][$commentKey]['tweets'] = $tweetValue['tweets'];
+						unset($tweets[$r][$tweetKey]);
+					}
+					if ($commentValue['title'] === 'empty'){ unset($comments[$r][$commentKey]); }
+				}
+			}
+			$combined[$r] = array_merge($comments[$r], $tweets[$r]);
+		}
+		
+			$combined['everything'] = array_merge_recursive($combined['day'],$combined['week'],$combined['month'],$combined['all']);
+			foreach ($combined['everything'] as $key => $val){
+				foreach ($combined['everything'] as $sKey => $sVal){
+					similar_text($val['title'], $sVal['title'],$sim);
+					if ($sim > 70  && $key != $sKey){
+						unset($combined['everything'][$key]);
+					}
+				}
+			}
+
+		foreach($combined['everything'] as $comKey => $comValue){		
+			if (intval($comValue['tweets']) == 0){
+				try { $combined['everything'][$comKey]['tweets'] = $this->get_twCount_by_url($comValue['url']); }
+				catch(Exception $e){ $combined['everything'][$comKey]['tweets'] = 0; } 
+			}
+			if (intval($comValue['comments']) == 0){
+				$combined['everything'][$comKey]['comments'] = $this->getSingleComments($comValue['id']);			
+			}
 		} 
-	} ?>
-	<div id="SharePulse" style=" width:<?php echo ($data['sp_Thumbs'] == 'yes')?'300px':'200px' ?>;" >	
-	<style>
-		<?php if ($data['theme']=='bullets') { include('SharePulse-bullets.css'); $add = '-48'; } else { include('SharePulse-buttons.css'); $add = ''; echo '
-div.sharestats a:hover div.stat {
-  background-position:0 0;
-}
-div.twitter-share{
-	background-image: url("'.get_bloginfo('url').'/wp-content/plugins/sharepulse/images/twitter_32.png");
-	text-indent:-9999px;
-}
-div.fb-share{
-	background-image: url("'.get_bloginfo('url').'/wp-content/plugins/sharepulse/images/facebook_32.png");
-	text-indent:-9999px;
-}
-div.digg-share{
-	background-image: url("'.get_bloginfo('url').'/wp-content/plugins/sharepulse/images/digg_32.png");
-	text-indent:-9999px;
-}
-div.shadow {
-	width:44px;
-	height:30px;
-	float:left;
-	background:url("'.get_bloginfo('url').'/wp-content/plugins/sharepulse/images/shadow.png") 0 25px no-repeat;
-}
-div.shadow-back {
-	width:44px;
-	height:30px;
-	float:left;
-	z-index: -1;
-	background:url("'.get_bloginfo('url').'/wp-content/plugins/sharepulse/images/shadow-back.png") 0 20px no-repeat;
-}'; } ?>
-	</style>
-	<?php for ( $i = 0; $i < $data['sp_Count']; $i++ ) { ?>
-	<div class="SharePulse">
-	<?php
-		$domain = get_bloginfo('url');
-		$url_title = urlencode($data['SharePulse'][$i]['title']); 
-		$url_excerpt = urlencode($data['SharePulse'][$i]['excerpt']); 
-		$url_permalink = urlencode( $data['SharePulse'][$i]['url'] );
-		$url_source = urlencode(get_bloginfo('name'));
-		$api_key = ( $data['awesm_api'] != '' )?'api_key='.$data['awesm_api'].'&':'';
-		$awesm = 'http://create.awe.sm/url/share?'.$api_key.'version=1&share_type=twitter&create_type=sharelink&target='.$url_permalink.'&destination=http://twitter.com/home?status=RT+%40'.$data['tw_Source'].'+'.$url_title.'+AWESM_TARGET';
-	?>	
-			<a href="<?php echo $data['SharePulse'][$i]['url']; ?>" title="<?php echo $data['SharePulse'][$i]['title']; ?>... Tweets: <?php echo $data['SharePulse'][$i]['tw']; ?>, Shares: <?php echo $data['SharePulse'][$i]['fb']; ?>, Diggs: <?php echo $data['SharePulse'][$i]['dg']; ?>, Total: <?php echo $data['SharePulse'][$i]['total']; ?>">
-			<?php if ( $data['sp_Thumbs'] == 'yes' ) : ?>
-				<?php echo (  $data['SharePulse'][$i]['total'] != 0 ) ? '<div class="total"><h6>'. $data['SharePulse'][$i]['total'] .'</h6></div>' : '' ?>
-				<img class="share-thumb" src="<?php echo $data['SharePulse'][$i]['img']; ?>" alt="<?php echo $data['SharePulse'][$i]['title']; ?>" />
-				<div class="title" style="margin-left:110px;">
-				<?php else: ?>
-				<div class="title" style="margin-left:10px;">
-			<?php endif; ?>
-				<h4><?php echo $data['SharePulse'][$i]['title']; ?></h4></div>
-			</a>
-		<?php if ($data['theme']=='bullets'): ?>
-			<div class="sharestats">
-				<div class="tw-share">
-					<a class="tw-link" href="<?php echo $awesm; ?>" title="Tweet this" target="_blank" title="Share on Twitter"><img src="<?php echo $domain; ?>/wp-content/plugins/sharepulse/images/twitter<?php echo $add; ?>.png" alt="Tweet This" />
-					<div class="tw-count"><?php echo ( $data['SharePulse'][$i]['tw'] != 0 ) ? $data['SharePulse'][$i]['tw'] : ''; ?></div></a>
-				</div>
-				<div class="fb-share">
-					<a class="fb-link" href="http://www.facebook.com/sharer.php?u=<?php echo $url_permalink; ?>&t=<?php echo $url_title; ?>" target="_blank" title="Share on Facebook"><img src="<?php echo $domain; ?>/wp-content/plugins/sharepulse/images/facebook<?php echo $add; ?>.png" alt="Share on Facebook" />
-					<div class="fb-count"><?php echo ( $data['SharePulse'][$i]['fb'] != 0 ) ? $data['SharePulse'][$i]['fb'] : ''; ?></div></a>
-				</div>
-				<div class="dg-share">
-					<a class="dg-link" href="http://digg.com/submit?url=<?php echo $url_permalink; ?>&title=<?php echo $url_title; ?>&bodytext=<?php echo $url_excerpt; ?>&media=news" target="_blank" title="digg this"><img src="<?php echo $domain; ?>/wp-content/plugins/sharepulse/images/digg<?php echo $add; ?>.png" alt="Digg This" />
-					<div class="dg-count"><?php echo ( $data['SharePulse'][$i]['dg'] != 0 ) ? $data['SharePulse'][$i]['dg'] : ''; ?></div></a>
-				</div>
-			</div>
-			<?php  else: ?>
-			<div class="sharestats">
-				<div class="twshare">
-				<a  class="count" href="<?php echo $awesm; ?>" title="Tweet this" target="_blank" title="Share on Twitter">				
-					<div class="shadow-back"><div class="shadow"><div class="twitter-share stat">Share on Twitter</div></div></div>
-					<?php echo ( $data['SharePulse'][$i]['tw'] != 0 ) ? '<span class="top">'.$data['SharePulse'][$i]['tw'].'</span>' : ''; ?></a>
-				</div>
-				<div class="fbshare">
-				<a class="count" href="http://www.facebook.com/sharer.php?u=<?php echo $url_permalink; ?>&t=<?php echo $url_title; ?>" target="_blank" title="Share on Facebook">
-					<div class="shadow-back"><div class="shadow"><div class="fb-share stat">Share on Facebook</div></div></div>
-					<?php echo ( $data['SharePulse'][$i]['fb'] != 0 ) ? '<span class="top">'.$data['SharePulse'][$i]['fb'].'</span>' : ''; ?></a>
-				</div>
-				<div class="dgshare">
-					<a class="count" href="http://digg.com/submit?url=<?php echo $url_permalink; ?>&title=<?php echo $url_title; ?>&bodytext=<?php echo $url_excerpt; ?>&media=news" target="_blank" title="digg this">
-					<div class="shadow-back"><div class="shadow"><div class="digg-share stat">Digg This</div></div></div>
-					<?php echo ( $data['SharePulse'][$i]['dg'] != 0 ) ? '<span class="top">'.$data['SharePulse'][$i]['dg'].'</span>' : ''; ?></a>
-				</div>
-			</div>
-		<?php endif; ?>
-	</div>
-	<?php }
-	echo ($data['link']=='yes')?'<h5>Powered by: <a href="http://www.jackreichert.com/plugins/sharepulse/" title="Share Pulse" target="_blank">SharePulse</a></h5>':'<h5>Powered by: SharePulse</h5>';
-	echo '</div>';
-}
+	return $combined;
+	}
+	function fillInMissing($data, $fullList){
+			foreach ($data as $k => $d){
+				foreach ($fullList as $kEve => $eve ){
+					if (intval($d['id']) == intval($eve['id'])){
+						$data[$k]['tweets'] = $eve['tweets'];
+						$data[$k]['comments'] = $eve['comments'];
+						$data[$k]['fb'] = $eve['fb'];
+						$data[$k]['total'] = $eve['total'];
+					}
+				}
+			}
+	
+	return $data;
+	}
+	
+	function getTotals($data){
+		foreach($data as $key => $value){
+			$data[$key]['total'] = (int)$value['tweets']+(int)$value['fb']+(int)$value['comments'];
+		}
+		
+	return $data;
+	}
+	function sortStats($data){
+		usort($data, array("sharePulse_getData", "sortByTotal"));
+		
+	return $data;
+	}
+	function sortByTotal($a,$b){
+	    if ($a['total'] == $b['total']) {
+	        return 0;
+	    }
+	    
+	return ($a['total'] < $b['total']) ? 1 : -1;
+	}
+	
+} 
+class sharePulse_init{
+	function sharePulse_init(){ // Creates new instance and populates the database
+		$this->sharePulse_update();
+	} 
+	function sharePulse_update(){ // Creates new instance and populates the database
+		$data = new sharePulse_getData();
+	} 	
+	function newSchedules($schedules){ // Creates new 
+		$schedules['threeMin'] = array('interval'=> 180, 'display'=>  __('Once Every 3 Minutes'));
+		$schedules['fiveMin'] = array('interval'=> 300, 'display'=>  __('Once Every 5 Minutes'));
+		$schedules['tenMin'] = array('interval'=> 600, 'display'=>  __('Once Every 10 Minutes'));  
+		$schedules['fifteenMin'] = array('interval'=> 900, 'display'=>  __('Once Every 15 Minutes'));    
+		$schedules['thirtyMin'] = array('interval'=> 1800, 'display'=>  __('Once Every 30 Minutes'));      
+	  
+	return $schedules;
+	}
+
+	function addStylesheet() {
+        $myStyleUrl = WP_PLUGIN_URL . '/sharepulse/sharepulse.css';
+        $myStyleFile = WP_PLUGIN_DIR . '/sharepulse/sharepulse.css';
+        if ( file_exists($myStyleFile) ) {
+            wp_register_style('sharePulseStyle', $myStyleUrl);
+            wp_enqueue_style( 'sharePulseStyle');
+        }
+    }
+	
+	function activate(){ // Schedules data updates
+		$data = new sharePulse_getData();
+		wp_clear_scheduled_hook('updateSharePulse');
+		wp_schedule_event(time(),'fifteenMin', 'updateSharePulse');		
+	}
+	function deactivate(){ // Deletes sharePulse table, unschedules data updates
+		delete_option('sharePulse');
+		wp_clear_scheduled_hook('updateSharePulse');
+	}	
+		
+}   
+
+
+	// Register the new schedules 
+	add_filter('cron_schedules', array('sharePulse_init', 'newSchedules'));
+
+	// Add the SharePulse action
+	add_action('updateSharePulse', array('sharePulse_init', 'sharePulse_update'));
+
+	// Register de/activation
+	register_activation_hook( __FILE__, array('sharePulse_init', 'activate'));
+	register_deactivation_hook( __FILE__,  array('sharePulse_init', 'deactivate' ));
+
+	// Register the widget
+	add_action('widgets_init', create_function('', 'return register_widget("sharePulse_widget");'));
+	add_action('wp_print_styles', array('sharePulse_init','addStylesheet')); 
+	
 ?>

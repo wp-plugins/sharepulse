@@ -4,7 +4,7 @@
 	Plugin URI: http://www.jackreichert.com/plugins/sharepulse/
 	Description: SharePulse rank&#39;s, in a sidebar widget, your site&#39;s most popular articles of the week. Stats are tabulated from most commented posts as well as the Twitter and Facebook APIs.
 	Author: Jack Reichert
-	Version: 2.0.1
+	Version: 2.0.2
 	Author URI: http://www.jackreichert.com/
 	License: GPLv2
 

@@ -69,6 +69,8 @@ Praise, suggestions, comments and even bugs found are welcome.
 Version 1.1 is clunky and will slow down your page load. Upgrade to 2.0 for a better, more efficient plugnin.
 
 == Changelog ==
+= 2.0.2 =
+* Files removed from package that were supposed to have been removed with previous update.
 
 = 2.0.1 =
 * New clean sleek design

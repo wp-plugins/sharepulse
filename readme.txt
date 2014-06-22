@@ -17,7 +17,7 @@ SharePulse ranks in a widget your site's posts which have had the greatest socia
 
 Relying on hit counts simply does not reflect the impact of your posts. SharePulse finds and ranks your site's posts that have the greatest *social* impact. The stats are gathered from Twitter, Facebook, LinkedIn as well as your own site's most commented posts measuring actual engagement. SharePulse lets you display these posts in your site's sidebar showing off your posts which have had the greatest social impact over the past day, week, month year or for all time. Each post is displayed with the total number of tweets, shares and comments.
 
-**Note:** This is the alpha for the plugin relaunch. Feedback is crucial, so please don't hesitate. We have a feature roadmap and want your input.
+**Note:** This is the alpha for the plugin relaunch. Feedback is crucial, so please don't hesitate. We have a feature roadmap and [we want your input](http://sharepulse.net/contact/).
 
 == Installation ==
 

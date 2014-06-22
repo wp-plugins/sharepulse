@@ -1,0 +1,13 @@
+.SharePulse_widget .SharePulse				{ text-align: left; padding: 0.5em; position: relative; border-bottom: 1px dashed #bcbcbc; }
+.SharePulse_widget .SharePulse .total 		{ font-size: 2em; float: left; margin: 0.25em 0.5em 0.25em 0; min-width: 1em; }
+.SharePulse_widget .SharePulse .title		{ font-size: 1em; line-height: 1.25em; }
+.SharePulse_widget .SharePulse .stats 		{ text-align: center; font-size:0.85em; clear: both; opacity: 0.3; margin-top: 0.25em; }
+.SharePulse_widget .SharePulse:hover .stats { opacity: 1; }
+.SharePulse_widget h5 						{ margin-top: 0.5em; font-size: 0.70em!important; text-align: right; }
+
+.sharepulse_page_sharepulse-build .wrapper	{ margin: 1em 2em 1em 1em; }
+
+.wp-admin .SharePulse_widget		{ width: 25em; margin: 1em; border: 1px solid #bcbcbc; padding: 1em; }
+.wp-admin .SharePulse_widget h3,
+.wp-admin .SharePulse_widget h4 	{ text-align: center; }
+.wp-admin .SharePulse_widget .SharePulse	{ border: 1px solid #bcbcbc; margin: 0.5em 0; }

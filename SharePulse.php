@@ -1,49 +1,271 @@
 <?php
 /*
-	Plugin Name: Share Pulse
-	Plugin URI: http://www.jackreichert.com/plugins/sharepulse/
-	Description: SharePulse rank&#39;s, in a sidebar widget, your site&#39;s most popular articles of the week. Stats are tabulated from most commented posts as well as the Twitter and Facebook APIs.
+	Plugin Name: SharePulse
+	Plugin URI: http://sharepulse.net/
+	Description: SharePulse ranks in a sidebar widget your site&#39;s posts which have had the greatest social impact. Stats are tabulated from post comment counts, Twitter, LinkedIn and Facebook APIs.
 	Author: Jack Reichert
-	Version: 2.0.2
+	Version: 3.0a
 	Author URI: http://www.jackreichert.com/
 	License: GPLv2
-
-  Copyright 2010  Jack Reichert  (email : contact@jackreichert.com)
-
-    This program is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License, version 2, as 
-    published by the Free Software Foundation.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program; if not, visit http://codex.wordpress.org/GPL    
-    or write to the Free Software Foundation, Inc., 
-    51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-    
 */ 
-class sharePulse_widget extends WP_Widget {
 
-	function sharePulse_widget() { 	// The widget construct. Initiating our plugin data.
-		$widgetData = array( 'classname' => 'sharePulse_widget', 'description' => __( 'rank&#39;s, in a sidebar widget, your site&#39;s most popular articles of the week.' ) );
-		$this->WP_Widget('sharePulse_widget', __('Share Pulse'), $widgetData);
+$sharepulse = new SharePulse();
 
+add_action( 'widgets_init', function(){
+     register_widget( 'SharePulse_widget' );
+});
+
+class SharePulse {
+	
+	public function __construct() {
+		add_action( 'admin_menu', array( $this, 'add_plugin_page' ) ); 
+		add_action( 'wp_ajax_sharepulse-build-stats', array( $this, 'build_stats_ajax') ); 
+		add_action( 'wp_ajax_sharepulse-build-done', array( $this, 'build_stats_done') ); 
+	}
+	
+	public function add_plugin_page() {
+        // This page will be under "Settings"
+        add_menu_page( 'SharePulse Stats', 'SharePulse', 'edit_others_posts', 'sharepulse', array($this, 'main_admin_page'), 'dashicons-share', 61 );
+		add_submenu_page( 'sharepulse', 'Build SharePulse Stats', 'Build Stats', 'manage_options', 'sharepulse-build', array($this, 'rebuild_stats_page'));
+    }
+	
+	public function main_admin_page() { ?>
+		<h1>SharePulse Stats</h1>
+		<p><a href="http://sharepulse.net/contact/" target="_blank">What features would you like to see?</a></p>
+        <p>Don't see stats? <a href="<?php echo admin_url( 'admin.php?page=sharepulse-build' ); ?>">Build them.</a></p>
+        <?php
+            $range = array( 'day', 'week', 'month', 'year', 'all' );
+            foreach ( $range as $r ) : 
+                $data[$r] = SharePulse::get_stats( $r, 5, 'no' ); ?>
+                <div class="SharePulse_widget">
+                    <h3><?php echo ucfirst( $r ); ?></h3>
+                    <?php if ( count( $data[$r] ) > 0 ) : ?>
+                        <?php foreach ( $data[$r] as $d ) :?>
+                        <div class="SharePulse">
+                            <div class="total"><?php echo $d['total']; ?></div>
+                            <span class="title"><a href="<?php echo get_permalink( $d['id'] ); ?>"><?php echo get_the_title( $d['id'] ); ?></a></span>
+                            <div class="stats">
+                                &bull;&nbsp;Twitter:&nbsp;<?php echo $d['twitter']; ?>
+                                &bull;&nbsp;Facebook:&nbsp;<?php echo $d['facebook']; ?>
+                                &bull;&nbsp;Linkedin:&nbsp;<?php echo $d['linkedin']; ?>
+                                &bull;&nbsp;Comments:&nbsp;<?php echo $d['comments']; ?>
+                            </div>
+                        </div>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <h4>No Stats</h4>
+                    <?php endif; ?>
+                </div>
+        <?php
+            endforeach; 
+	}
+	
+	public static function get_stats( $range = 'ALL', $limit = 5, $include_comments = true ) {
+		global $wpdb;
+
+		$join = $where = "";
+		$ranges = array('DAY', 'WEEK', 'MONTH', 'YEAR');
+
+		if ( in_array( strtoupper( $range ), $ranges ) ) {
+			$join = "
+				JOIN {$wpdb->posts} p
+				ON pm.post_id = p.ID
+			";
+
+			$where = "
+				AND post_date BETWEEN DATE_SUB( NOW(), INTERVAL 1 $range ) AND NOW()
+			";
+		}
+		
+		$query = $wpdb->get_results("
+			SELECT * FROM {$wpdb->postmeta} pm
+			$join
+			WHERE meta_key = 'SharePulse'
+			$where
+			ORDER BY meta_value + 0 DESC
+			LIMIT $limit;
+		");
+		
+		$response = array();
+		
+		foreach ( $query as $i => $res ) {
+			$response[$i]['id']			= $res->post_id;
+			$response[$i]['title']		= get_the_title( $res->post_id );
+			$response[$i]['total']		= intval( strstr( $res->meta_value, '_', true ) );
+			
+			if ( $include_comments ) {
+				$response[$i]['comments']	= get_comments_number(  $res->post_id );
+				$response[$i]['total']		+= $response[$i]['comments'];
+			}
+			
+			$decoded = json_decode( base64_decode( substr( $res->meta_value, strpos( $res->meta_value, '_' ) + 1 ) ) );
+			foreach( $decoded as $key => $stat ) {
+				$response[$i][$key] = $stat;
+			}
+		}
+		
+		usort( $response, 'self::stats_cmp' );
+		
+		return $response;
+	}
+	
+	private static function stats_cmp( $a, $b ) {
+		if ( $a['total'] == $b['total'] ) {
+			return 0;
+		}
+		
+		return ( $a['total'] > $b['total'] ) ? -1 : 1;
+	}
+	
+	public function build_stats_done() {
+		$options = json_decode(base64_decode(get_option('sharepulse')));
+		$options->status = 'done';
+		update_option('sharepulse', base64_encode(json_encode($options)));
+		
+		header( "Content-Type: application/json" );
+		echo json_encode('done'); 
+		exit();
+	}
+	
+	public function build_stats_ajax() {
+		$nonce = $_POST['spNonce']; 	
+		if ( ! wp_verify_nonce( $nonce, 'sp-ajax-nonce' ) ) {
+			die( 'Busted!');
+		}
+		
+		$options = json_decode(base64_decode(get_option('sharepulse')));
+		if (isset($options->status)) {
+			$options->status = time();
+		} else {
+			$options['status'] = time();
+		}
+		update_option('sharepulse', base64_encode(json_encode($options)));
+		
+		$id = intval($_POST['id']);
+		if (0 < $id) {
+			$response = $this->get_counts( $id );
+			$this->set_counts( $response );
+		}
+		
+		header( "Content-Type: application/json" );
+		echo json_encode( $response ); 
+		exit();		
+	}
+		
+	public function rebuild_stats_page() {
+		settings_fields( 'SharePulse' ); 
+    	do_settings_sections( 'SharePulse' ); 
+		
+		wp_enqueue_style( 'jquery-ui-progressbar-css', '//ajax.googleapis.com/ajax/libs/jqueryui/1.10.4/themes/smoothness/jquery-ui.css' ); 
+		
+		$options = json_decode(base64_decode(get_option('sharepulse')));
+		
+		$ids = get_posts(array(
+			'orderby' => 'comment_count',
+			'posts_per_page' => -1,
+			'cache_results' => false,
+			'update_post_meta_cache' => false,
+			'update_post_term_cache' => false
+		));
+		
+		wp_enqueue_script( 'sharepulse-build-stats', plugin_dir_url( __FILE__ ).'/js/rebuild.js', array( 'jquery-ui-progressbar', 'jquery', 'underscore' ) );
+		wp_localize_script( 'sharepulse-build-stats', 'sp_Ajax', array(
+			'ajaxurl'       => admin_url( 'admin-ajax.php' ),
+			'spNonce'		=> wp_create_nonce( 'sp-ajax-nonce' ),
+			'rebuild_list'	=> json_encode(wp_list_pluck($ids, 'ID'))
+		));
+		wp_enqueue_style( 'sharepulse-build-stats-css', plugin_dir_url( __FILE__ ).'/css/rebuild.css');
+		
+		$buildText = (!isset($options->status) || 'done' != $options->status) ? 'Build' : 'Rebuild'; ?>
+
+		<div class="wrapper">
+			<h1><?php echo $buildText; ?> SharePulse Stats</h1>
+			<h2 id="statsTitle"><?php echo (isset($options->status) && 'done' != $options->status) ? 'The last build did not complete successfully.' : ''; ?></h2>
+			<p id="buildAlert"<?php echo (isset($options->status) && 'done' != $options->status) ? ' style="color:orange;font-weight:bold;"' : '' ; ?>>Please make sure not to leave this page until the process is complete.</p>
+			<div id="progressbar"></div>
+			<p><button id="rebuild" class="button button-primary"><?php echo $buildText; ?> Now</button></p>
+			<ul id="progress"></ul>
+		</div>
+
+<?php		
+	}
+	
+	private static function get_services() {
+		// services SharePulse queries
+		$services = array(
+			'twitter' 	=> array( 
+				'url' 		=> 'http://urls.api.twitter.com/1/urls/count.json?callback=sp&url=%s',
+				'cnt_name'	=> 'count'
+			),
+			'facebook'	=> array (
+				'url'		=> 'https://graph.facebook.com/?callback=sp&id=%s',
+				'cnt_name'	=> 'shares'
+			),
+			'linkedin'	=> array (
+				'url'		=> 'http://www.linkedin.com/countserv/count/share?callback=sp&format=jsonp&url=%s',
+				'cnt_name'	=> 'count'
+			)
+		);
+		
+		return apply_filters('sp_add_service', $services);
+	}
+		
+	public static function set_counts( $stats ) {
+		$id = $stats['id'];
+		$total = $stats['total'];
+		unset( $stats['id'] );
+		unset( $stats['title'] );
+		unset( $stats['total'] );
+		$hexed = $total . '_' . base64_encode( json_encode( $stats ) );
+		add_post_meta( $id, 'SharePulse', $hexed, true ) || update_post_meta( $id, 'SharePulse', $hexed );
+	}
+	
+	public static function get_counts($id) {
+		$url = get_permalink($id);
+		
+		$services = self::get_services();
+		time_nanosleep(0, 250000000);
+		// var
+		$total = 0;
+		$stats = array(
+			'id'		=> $id,
+			'title'		=> get_the_title($id),
+			'twitter'	=> 0,
+			'facebook'	=> 0,
+			'linkedin'	=> 0
+		); 
+
+        // queries services
+		foreach ($services as $name => $service) {
+			$regex = sprintf('#"%s":(\d+)#', $service['cnt_name']);
+			$result = wp_remote_get(sprintf($service['url'], rawurlencode($url)));
+			preg_match_all($regex, $result['body'], $matches);
+			$stats[$name] = isset($matches[1][0]) ? intval($matches[1][0]) : 0;
+			$total += $stats[$name];
+		}
+		
+		// total
+		$stats['total'] = $total;
+		
+		return $stats;
+	}	
+}
+
+class SharePulse_widget extends WP_Widget {
+	// The widget construct. Initiating our plugin data.
+	function sharePulse_widget() { 	
+		$widgetData = array( 'classname' => 'SharePulse_widget', 'description' => __( 'rank&#39;s, in a sidebar widget, your site&#39;s most popular articles.' ) );
+		$this->WP_Widget('sharePulse_widget', __('SharePulse'), $widgetData);
+		wp_enqueue_style( 'sharepulse-build-stats-css', plugin_dir_url( __FILE__ ).'/css/sharepulse.css');
 	} 
 
 	// Displays the widget on the screen.
 	function widget($args, $instance) { 
 		extract($args);
-		$data  = get_option('sharePulse'); 
-		// wont show any widget if there is no data in the selected date range. Notifies use in widget backend.
-		if (count($data[$instance['date_range']]) != 0){ 
-			echo $before_widget;
-			echo $before_title . $instance['title'] . $after_title; 
-			$this->SharePulse_display($instance);
-			echo $after_widget;
-		}
+		echo $before_widget;
+		echo $before_title . $instance['title'] . $after_title; 
+		$this->SharePulse_display($instance);
+		echo $after_widget;
 	}
 	
 	function update($new_instance, $old_instance) { // Updates the settings.
@@ -51,8 +273,7 @@ class sharePulse_widget extends WP_Widget {
 	}
 	
 	function form($instance) {	// The admin form. 
-		$defaults = array( 'title' => 'Share Pulse', 'via' => 'SharePulse', 'awesm_key' => '', 'date_range' => 'all', 'amount' => '4', 'linklove' => 'yes' );
-		$data  = get_option('sharePulse'); 
+		$defaults = array( 'title' => 'SharePulse', 'date_range' => 'all', 'amount' => '4', 'linklove' => 'yes' );
 		$instance = wp_parse_args($instance, $defaults); ?>
 		<div id="sharePulse-admin-panel">
 			<p>
@@ -65,22 +286,14 @@ class sharePulse_widget extends WP_Widget {
 					<option value="day" <?php echo (($instance['date_range'] == 'day') ? 'selected="true"' : '' ); ?>>Day</option>
 					<option value="week" <?php echo (($instance['date_range'] == 'week') ? 'selected="true"' : '' ); ?>>Week</option>
 					<option value="month" <?php echo (($instance['date_range'] == 'month') ? 'selected="true"' : '' ); ?>>Month</option>
+                    <option value="year" <?php echo (($instance['date_range'] == 'year') ? 'selected="true"' : '' ); ?>>Year</option>
 					<option value="all" <?php echo (($instance['date_range'] == 'all') ? 'selected="true"' : '' ); ?>>All Time</option>
-				</select><br/>
-				<?php if (count($data[$instance['date_range']]) == 0){ echo 'There is not enough data to display the results for the date range "'.$instance['date_range'].'".'; } ?>
+				</select>
 			</p>			
 			<p>
 				<label for="<?php echo $this->get_field_id('amount'); ?>">Number of posts to display:</label>
 				<input type="text" size="2" name="<?php echo $this->get_field_name('amount'); ?>" id="<?php echo $this->get_field_id('amount'); ?>" value="<?php echo $instance['amount']; ?>" />
 			</p>
-			<p>
-				<label for="<?php echo $this->get_field_id('via'); ?>">Tweeted via: (@myHandle)</label>
-				<input type="text" class="widefat" name="<?php echo $this->get_field_name('via'); ?>" id="<?php echo $this->get_field_id('via'); ?>" value="<?php echo $instance['via']; ?>" />
-			</p>	
-			<p>
-				<label for="<?php echo $this->get_field_id('awesm_key'); ?>">Awe.sm API key:</label>
-				<input type="text" class="widefat" name="<?php echo $this->get_field_name('awesm_key'); ?>" id="<?php echo $this->get_field_id('awesm_key'); ?>" value="<?php echo $instance['awesm_key']; ?>" />
-			</p>	
 			<p style="font-size:11px; text-align:left;">
 				<label for="<?php echo $this->get_field_id('linklove'); ?>">Linkback to show your thanks? </label>			
 				<select name="<?php echo $this->get_field_name('linklove'); ?>" id="<?php echo $this->get_field_id('linklove'); ?>">
@@ -88,295 +301,31 @@ class sharePulse_widget extends WP_Widget {
 					<option value="no" <?php echo (($instance['linklove'] == 'no') ? 'selected="true"' : '' ); ?>>No</option>
 				</select>
 			</p>			
-			<p style="font-size:9px;"><a href="http://www.jackreichert.com/plugins/sharepulse/" target="_blank">SharePulse</a> was developed by <a href="http://www.jackreichert.com" target="_blank">Jack Reichert</a> is licensed under <a href="http://codex.wordpress.org/GPL" target="_blank">GPLv2</a>.<br/><br/>
-			Twitter stats powered by: <a href="http://topsy.com" title="Topsy" target="_blank"><img src="http://corp.topsy.com/wp-content/uploads/2010/10/powered_v3_92.png" align="right" alt="Topsy" /></a></p>
+			<p style="font-size:9px;"><a href="http://sharepulse.net" target="_blank">SharePulse</a> was developed by <a href="http://www.jackreichert.com" target="_blank">Jack Reichert</a> is licensed under <a href="http://codex.wordpress.org/GPL" target="_blank">GPLv2</a>.</p>
 		</div>
-<?php	} 
+<?php	
+	} 
 	
-		function SharePulse_display($instance){
-			$data = get_option('sharePulse'); 
-			$curLenth = count($data[$instance['date_range']]);
-			$numPosts = (($curLenth < $instance['amount']) ? $curLenth : $instance['amount']); // Checks to see if there are enough to display
-			for ( $i=0; $i < $numPosts; $i++ ): 
-				$url_title = urlencode($data[$instance['date_range']][$i]['title']); 
-				$url_permalink = urlencode($data[$instance['date_range']][$i]['url']);
-				$api_key = ( $instance['awesm_api'] != '' )?'api_key='.$instance['awesm_api'].'&':'';
-				$awesm = 'http://create.awe.sm/url/share?'.$api_key.'version=1&amp;share_type=twitter&amp;create_type=sharelink&amp;target='.$url_permalink.'&amp;destination=http://twitter.com/?status=RT+%40'.$instance['via'].'+'.$url_title.'+AWESM_TARGET'; ?>
-				<div class="SharePulse">
-					<div class="total"><?php echo $data[$instance['date_range']][$i]['total']; ?></div>
-					<span class="title"><a href="<?php echo $data[$instance['date_range']][$i]['url']; ?>"><?php echo $data[$instance['date_range']][$i]['title']; ?></a></span>
-					<div class="stats">
-						 &bull;&nbsp;<a href="<?php echo $data[$instance['date_range']][$i]['url']; ?>#comments" title="leave a comment">Comments:&nbsp;<?php echo $data[$instance['date_range']][$i]['comments']; ?></a> 
-						 &bull;&nbsp;<a href="<?php echo $awesm; ?>" target="_blank" title="tweet this">Twitter:&nbsp;<?php echo $data[$instance['date_range']][$i]['tweets']; ?></a>
-						 &bull;&nbsp;<a href="http://www.facebook.com/sharer.php?u=<?php echo $url_permalink; ?>&amp;t=<?php echo $url_title; ?>" target="_blank" title="share on facebook">Facebook:&nbsp;<?php echo $data[$instance['date_range']][$i]['fb']; ?></a>
-					</div>
+	function SharePulse_display($instance){
+		$data = SharePulse::get_stats( $instance['date_range'], $instance['amount'], true );
+		foreach ( $data as $i => $value ): ?>
+			<div class="SharePulse">
+				<div class="total"><?php echo $value['total']; ?></div>
+				<span class="title"><a href="<?php echo get_permalink( $value['id'] ); ?>"><?php echo get_the_title( $value['id'] ); ?></a></span>
+				<div class="stats">
+					 <?php echo ( 0 < $value['comments'] ) ? "&bull;&nbsp;Comments:&nbsp;{$value['comments']}" : ''; ?> 
+					 <?php echo ( 0 < $value['twitter'] ) ? "&bull;&nbsp;Twitter:&nbsp;{$value['twitter']}" : ''; ?> 
+					 <?php echo ( 0 < $value['facebook'] ) ? "&bull;&nbsp;Facebook:&nbsp;{$value['facebook']}" : ''; ?> 
+					 <?php echo ( 0 < $value['linkedin'] ) ? "&bull;&nbsp;LinkedIn:&nbsp;{$value['linkedin']}" : ''; ?>
 				</div>
-	<?php	endfor;
-		echo ($instance['linklove']=='yes')?'<h5>Powered by: <a href="http://www.jackreichert.com/plugins/sharepulse/" title="Share Pulse" target="_blank">SharePulse</a></h5>':'<h5 class="SharePulse">Powered by: SharePulse</h5>';
+			</div>
+	<?php endforeach;
+		echo ($instance['linklove']=='yes')?'<h5>Powered by: <a href="http://sharepulse.net" title="SharePulse" target="_blank">SharePulse</a></h5>':'<h5 class="SharePulse">Powered by: SharePulse</h5>';
+		if ( is_singular( 'post' ) ) {
+			global $post;
+			$counts = SharePulse::get_counts( $post->ID );
+			SharePulse::set_counts( $counts );
 		}
+	}
 	
 }
-
-
-class sharePulse_getData {
-	function sharePulse_getData(){
-		$this->url 	= ereg_replace("(https?)://(www.)", "", get_bloginfo('url'));
-		$this->date_range = array('day','week','month','all');
-		$tweets 	= $this->getTopTweets($this->url);
-		$comments 	= $this->getTopComments();
-		$combined 	= $this->combineStats($tweets,$comments);
-		$combined['everything']	= $this->getMissingFbShares($combined['everything']);
-		$combined['everything'] = $this->getTotals($combined['everything']);
-		foreach ($combined as $key => $value ){ 
-			$combined[$key] = $this->fillInMissing($combined[$key],$combined['everything']);
-			$combined[$key]	= $this->sortStats($combined[$key]);
-		}
-		update_option('sharePulse', $combined);
-	}
-	
-	/** Topsy **/
-	function getTopTweets($url){
-		
-		foreach ($this->date_range as $r){
-			$rs = substr($r,0,1);
-			$results = $this->topsyAPI($url,$rs);
-			$tweets[$r] = $this->extractTwitterTags($results);
-
-		}
-		
-	return $tweets;	
-	}
-	function topsyAPI($url,$window){
-		$request = 'http://otter.topsy.com/search.json?q=site:'.$url.'&window='.$window; ; 
-		try {
-		    $result = json_decode(file_get_contents(stripslashes($request)));
-		} catch (Exception $e) {
-		  //  echo 'Caught exception: ',  $e->getMessage(), "\n";
-		  $result = array();
-		}
-		
-	
-	return $result;
-	}
-	function get_twCount_by_url($url) {
-		$reqUrl = 'http://otter.topsy.com/stats.json?url='.urlencode( $url );
-		try {
-		    $topsy = file_get_contents($reqUrl);
-		} catch (Exception $e) {
-		  //  echo 'Caught exception: ',  $e->getMessage(), "\n";
-		  $result = array();
-		}		
-		$topsy = json_decode($topsy);
-		$tw_Num = (int) $topsy->response->all;
-		
-	return $tw_Num;
-	}
-	function extractTwitterTags($tweets) {
-		foreach( $tweets->response->list as $key=>$story ){ //extracts relevant tags
-			$tweetStories[$key]['title'] = $story->title;
-			$tweetStories[$key]['comments'] = 0;
-			$tweetStories[$key]['tweets'] = $story->hits;
-			$tweetStories[$key]['id'] = url_to_postid($story->url);
-			$tweetStories[$key]['url'] = ($tweetStories[$key]['id'] != 0) ? get_permalink($tweetStories[$key]['id']) : $story->url;			
-			if ($tweetStories[$key]['id'] > 0) { $tweetStories[$key]['title'] = get_the_title($tweetStories[$key]['id']); }
-		}	
-		if ($tweetStories == NULL){ $tweetStories[]=array('title'=>'empty','url'=>'','comments'=>'','tweets'=>'','id'=>''); }
-	return $tweetStories;		
-	}	
-	
-	
-	/** Facebook **/
-	function get_fbCount_by_url($url) {
-		$reqUrl = 'http://api.facebook.com/restserver.php?method=links.getStats&urls='.urlencode( $url );
-		try {
-		    $facebook_share = simplexml_load_file($reqUrl);
-		} catch (Exception $e) {
-		  //  echo 'Caught exception: ',  $e->getMessage(), "\n";
-		  $result = array();
-		}		
-		$fb_Num = (int)$facebook_share->link_stat->total_count;
-	
-	return $fb_Num;
-	}	
-	function getMissingFbShares($data){
-		foreach ($data as $key => $story){
-			try{ $data[$key]['fb'] = $this->get_fbCount_by_url($story['url']); }
-			catch(Exception $e){ $data[$key]['fb'] = 0; }
-		}	
-		
-	return $data;
-	}
-	
-	
-	/** Comments **/
-	function getTopComments(){
-		foreach ($this->date_range as $r){		
-			$results = $this->mostCommented(10,$r);
-			$comments[$r] = $this->extractCommentTags($results);
-		}
-	return $comments;	
-	}
-	function mostCommented($no_posts = '10', $duration='month') {
-		global $wpdb;
-		// duration should be DAY WEEK MONTH OR YEAR
-		$querystr = "SELECT comment_count, ID, post_title FROM $wpdb->posts wposts, $wpdb->comments wcomments WHERE wposts.ID = wcomments.comment_post_ID AND wposts.post_status='publish' AND wcomments.comment_approved='1' ".(($duration != 'all') ? "AND wcomments.comment_date > DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 1 ".$duration.")" : "")." GROUP BY wposts.ID ORDER BY comment_count DESC LIMIT 0 ,  10";
-
-		$most_commented = $wpdb->get_results($querystr);
-
-	return $most_commented;
-	}
-	function getSingleComments($postID) {
-		global $wpdb;
-		$pop = $wpdb->get_results("SELECT post_title, comment_count FROM {$wpdb->prefix}posts WHERE id=".$postID);
-
-	return intval($pop[0]->comment_count);
-	}	
-	function extractCommentTags($comments){
-		$i=0;
-		foreach($comments as $comment){
-			$data[$i]['title'] = $comment->post_title;
-			$data[$i]['comments'] = intval($comment->comment_count);
-			$data[$i]['tweets'] = 0;
-			$data[$i]['id'] = $comment->ID;
-			$data[$i]['url'] = get_permalink($comment->ID);
-			$i++;
-		}
-		if ($data == NULL){ $data[]=array('title'=>'empty','url'=>'','comments'=>'','tweets'=>'','id'=>''); }
-	return $data;
-	}
-	
-	
-	/** Tabulate **/
-	function combineStats($tweets,$comments){
-	
-		foreach ($this->date_range as $r){	
-	
-			foreach($tweets[$r] as $tweetKey => $tweetValue){
-				if ($tweetValue['title'] === 'empty'){ unset($tweets[$r][$tweetKey]); }
-				foreach($comments[$r] as $commentKey => $commentValue){
-					if( strstr($tweetValue['title'],$commentValue['title'])!=false ){
-						$comments[$r][$commentKey]['tweets'] = $tweetValue['tweets'];
-						unset($tweets[$r][$tweetKey]);
-					}
-					similar_text($commentValue['title'], $tweetValue['title'],$sim);
-					if ($sim > 70){
-						$comments[$r][$commentKey]['tweets'] = $tweetValue['tweets'];
-						unset($tweets[$r][$tweetKey]);
-					}
-					if ($commentValue['title'] === 'empty'){ unset($comments[$r][$commentKey]); }
-				}
-			}
-			$combined[$r] = array_merge($comments[$r], $tweets[$r]);
-		}
-		
-			$combined['everything'] = array_merge_recursive($combined['day'],$combined['week'],$combined['month'],$combined['all']);
-			foreach ($combined['everything'] as $key => $val){
-				foreach ($combined['everything'] as $sKey => $sVal){
-					similar_text($val['title'], $sVal['title'],$sim);
-					if ($sim > 70  && $key != $sKey){
-						unset($combined['everything'][$key]);
-					}
-				}
-			}
-
-		foreach($combined['everything'] as $comKey => $comValue){		
-			if (intval($comValue['tweets']) == 0){
-				try { $combined['everything'][$comKey]['tweets'] = $this->get_twCount_by_url($comValue['url']); }
-				catch(Exception $e){ $combined['everything'][$comKey]['tweets'] = 0; } 
-			}
-			if (intval($comValue['comments']) == 0){
-				$combined['everything'][$comKey]['comments'] = $this->getSingleComments($comValue['id']);			
-			}
-		} 
-	return $combined;
-	}
-	function fillInMissing($data, $fullList){
-			foreach ($data as $k => $d){
-				foreach ($fullList as $kEve => $eve ){
-					if (intval($d['id']) == intval($eve['id'])){
-						$data[$k]['tweets'] = $eve['tweets'];
-						$data[$k]['comments'] = $eve['comments'];
-						$data[$k]['fb'] = $eve['fb'];
-						$data[$k]['total'] = $eve['total'];
-					}
-				}
-			}
-	
-	return $data;
-	}
-	
-	function getTotals($data){
-		foreach($data as $key => $value){
-			$data[$key]['total'] = (int)$value['tweets']+(int)$value['fb']+(int)$value['comments'];
-		}
-		
-	return $data;
-	}
-	function sortStats($data){
-		usort($data, array("sharePulse_getData", "sortByTotal"));
-		
-	return $data;
-	}
-	function sortByTotal($a,$b){
-	    if ($a['total'] == $b['total']) {
-	        return 0;
-	    }
-	    
-	return ($a['total'] < $b['total']) ? 1 : -1;
-	}
-	
-} 
-class sharePulse_init{
-	function sharePulse_init(){ // Creates new instance and populates the database
-		$this->sharePulse_update();
-	} 
-	function sharePulse_update(){ // Creates new instance and populates the database
-		$data = new sharePulse_getData();
-	} 	
-	function newSchedules($schedules){ // Creates new 
-		$schedules['threeMin'] = array('interval'=> 180, 'display'=>  __('Once Every 3 Minutes'));
-		$schedules['fiveMin'] = array('interval'=> 300, 'display'=>  __('Once Every 5 Minutes'));
-		$schedules['tenMin'] = array('interval'=> 600, 'display'=>  __('Once Every 10 Minutes'));  
-		$schedules['fifteenMin'] = array('interval'=> 900, 'display'=>  __('Once Every 15 Minutes'));    
-		$schedules['thirtyMin'] = array('interval'=> 1800, 'display'=>  __('Once Every 30 Minutes'));      
-	  
-	return $schedules;
-	}
-
-	function addStylesheet() {
-        $myStyleUrl = WP_PLUGIN_URL . '/sharepulse/sharepulse.css';
-        $myStyleFile = WP_PLUGIN_DIR . '/sharepulse/sharepulse.css';
-        if ( file_exists($myStyleFile) ) {
-            wp_register_style('sharePulseStyle', $myStyleUrl);
-            wp_enqueue_style( 'sharePulseStyle');
-        }
-    }
-	
-	function activate(){ // Schedules data updates
-		$data = new sharePulse_getData();
-		wp_clear_scheduled_hook('updateSharePulse');
-		wp_schedule_event(time(),'fifteenMin', 'updateSharePulse');		
-	}
-	function deactivate(){ // Deletes sharePulse table, unschedules data updates
-		delete_option('sharePulse');
-		wp_clear_scheduled_hook('updateSharePulse');
-	}	
-		
-}   
-
-
-	// Register the new schedules 
-	add_filter('cron_schedules', array('sharePulse_init', 'newSchedules'));
-
-	// Add the SharePulse action
-	add_action('updateSharePulse', array('sharePulse_init', 'sharePulse_update'));
-
-	// Register de/activation
-	register_activation_hook( __FILE__, array('sharePulse_init', 'activate'));
-	register_deactivation_hook( __FILE__,  array('sharePulse_init', 'deactivate' ));
-
-	// Register the widget
-	add_action('widgets_init', create_function('', 'return register_widget("sharePulse_widget");'));
-	add_action('wp_print_styles', array('sharePulse_init','addStylesheet')); 
-	
-?>

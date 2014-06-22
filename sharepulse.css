@@ -1,7 +1,0 @@
-.SharePulse 				{ text-align: left; padding: 10px; position: relative; }
-.SharePulse .total 			{ font-size: 36px; float: left; margin: 12px; }
-.SharePulse .title			{ font-size:12px; }
-.SharePulse .stats 			{ text-align: center; font-size:9px; clear: both; }
-.SharePulse .stats a 		{ opacity: 0.3; }
-.SharePulse:hover .stats a 	{ opacity: 1; }
-.sharePulse_widget h5 		{ font-size: 9px; text-align: right; }

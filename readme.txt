@@ -1,5 +1,5 @@
 === SharePulse ===
-Contributors: Jack Reichert
+Contributors: jackreichert
 Plugin Name: SharePulse
 Plugin URI: http://sharepulse.net/
 Tags: Twitter, LinkedIn, comments, statistics, Facebook, share, social media, social widget, stats, most popular

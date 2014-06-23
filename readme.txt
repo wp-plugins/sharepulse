@@ -62,6 +62,9 @@ Praise, suggestions, comments and especially bugs found are welcome.
 Version 2.0.2 unfortunately was DOA. The APIs that were relied upon were unreliable. After much research version 3 is working well. There’s a way to go for a full product. But this is a strong MVP.
 
 == Changelog ==
+= 3.0.1a =
+* Bugfix to remove duplicate posts from the widget.
+
 = 3.0a =
 * Rebuilt from the ground up. Now relying on better api calls a more stable foundation. Notice the 'a' in the release number, this is the alpha for the plugin relaunch. Feedback is crucial, so [please don't hesitate](http://sharepulse.net/contact/).
 

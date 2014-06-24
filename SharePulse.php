@@ -4,7 +4,7 @@
 	Plugin URI: http://sharepulse.net/
 	Description: SharePulse ranks in a sidebar widget your site&#39;s posts which have had the greatest social impact. Stats are tabulated from post comment counts, Twitter, LinkedIn and Facebook APIs.
 	Author: Jack Reichert
-	Version: 3.0.2a
+	Version: 3.0.3a
 	Author URI: http://www.jackreichert.com/
 	License: GPLv2
 */ 
@@ -119,9 +119,9 @@ class SharePulse {
 	}
 	
 	public function build_stats_done() {
-		$options = json_decode(base64_decode(get_option('sharepulse')));
+		$options = $this->get_sp_options();
 		$options->status = 'done';
-		update_option('sharepulse', base64_encode(json_encode($options)));
+		$this->set_sp_options( $options );
 		
 		header( "Content-Type: application/json" );
 		echo json_encode('done'); 
@@ -134,13 +134,10 @@ class SharePulse {
 			die( 'Busted!');
 		}
 		
-		$options = json_decode(base64_decode(get_option('sharepulse')));
-		if (isset($options->status)) {
-			$options->status = time();
-		} else {
-			$options['status'] = time();
-		}
-		update_option('sharepulse', base64_encode(json_encode($options)));
+		$options = $this->get_sp_options();
+		$options->status = time();
+		
+		$this->set_sp_options( $options );
 		
 		$id = intval($_POST['id']);
 		if (0 < $id) {
@@ -159,7 +156,7 @@ class SharePulse {
 		
 		wp_enqueue_style( 'jquery-ui-progressbar-css', '//ajax.googleapis.com/ajax/libs/jqueryui/1.10.4/themes/smoothness/jquery-ui.css' ); 
 		
-		$options = json_decode(base64_decode(get_option('sharepulse')));
+		$options = $this->get_sp_options();
 		
 		$ids = get_posts(array(
 			'orderby' => 'comment_count',
@@ -250,6 +247,20 @@ class SharePulse {
 		
 		return $stats;
 	}	
+		
+	private function get_sp_options() {
+		$option = get_option( 'sharepulse' );
+		if ( ! $option ) {
+			$option = 'eyJzdGF0dXMiOiIifQ==';
+		}
+		
+		return json_decode( base64_decode( $option ) );
+	}
+	
+	private function set_sp_options( $options ) {
+		update_option( 'sharepulse', base64_encode( json_encode( $options ) ) );
+	}
+	
 }
 
 class SharePulse_widget extends WP_Widget {

@@ -4,7 +4,7 @@
 	Plugin URI: http://sharepulse.net/
 	Description: SharePulse ranks in a sidebar widget your site&#39;s posts which have had the greatest social impact. Stats are tabulated from post comment counts, Twitter, LinkedIn and Facebook APIs.
 	Author: Jack Reichert
-	Version: 3.0.3a
+	Version: 3.0.4a
 	Author URI: http://www.jackreichert.com/
 	License: GPLv2
 */ 
@@ -249,12 +249,12 @@ class SharePulse {
 	}	
 		
 	private function get_sp_options() {
-		$option = get_option( 'sharepulse' );
-		if ( ! $option ) {
-			$option = 'eyJzdGF0dXMiOiIifQ==';
+		$options = get_option( 'sharepulse' );
+		if ( ! $options || is_array( $options ) ) {
+			$options = 'eyJzdGF0dXMiOiIifQ==';
 		}
 		
-		return json_decode( base64_decode( $option ) );
+		return json_decode( base64_decode( $options ) );
 	}
 	
 	private function set_sp_options( $options ) {

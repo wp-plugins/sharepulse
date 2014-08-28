@@ -62,6 +62,9 @@ Praise, suggestions, comments and especially bugs found are welcome.
 Version 2.0.2 unfortunately was DOA. The APIs that were relied upon were unreliable. After much research version 3 is working well. There’s a way to go for a full product. But this is a strong MVP.
 
 == Changelog ==
+= 3.1 =
+* Filter added to get_posts so that it can be hook in to query all post types. (Full integration for all post types in the pipeline)
+
 = 3.0.6 =
 * Tested up to 4.0
 * Made sure stats will only update once a minute to reduce load on services.

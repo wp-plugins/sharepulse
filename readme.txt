@@ -6,7 +6,7 @@ Tags: Twitter, LinkedIn, comments, statistics, Facebook, share, social media, so
 Author URI: http://www.jackreichert.com/
 Author: Jack Reichert
 Requires at least: 3.5
-Tested up to: 4.0
+Tested up to: 4.0.1
 Stable tag: trunk
 License: GPLv2
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
@@ -62,6 +62,9 @@ Praise, suggestions, comments and especially bugs found are welcome.
 Version 2.0.2 unfortunately was DOA. The APIs that were relied upon were unreliable. After much research version 3 is working well. There’s a way to go for a full product. But this is a strong MVP.
 
 == Changelog ==
+= 3.1.1 =
+* Added better error handling for get_counts()
+
 = 3.1 =
 * Filter added to get_posts so that it can be hook in to query all post types. (Full integration for all post types in the pipeline)
 

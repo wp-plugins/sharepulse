@@ -6,7 +6,7 @@ Tags: Twitter, LinkedIn, comments, statistics, Facebook, share, social media, so
 Author URI: http://www.jackreichert.com/
 Author: Jack Reichert
 Requires at least: 3.5
-Tested up to: 4.1
+Tested up to: 4.2.2
 Stable tag: trunk
 License: GPLv2
 License URI: http://www.gnu.org/licenses/gpl-2.0.html

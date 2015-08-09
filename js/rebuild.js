@@ -1,5 +1,3 @@
-/*jslint browser: true, plusplus: true, nomen: true*/
-/*global $, _, jQuery, sp_Ajax, console*/
 (function ($) {
     'use strict';
 	var count = 0,
@@ -7,7 +5,7 @@
 		template;
 	
 	$("#progressbar").progressbar();
-	
+
 	$('#rebuild').bind('build_done', function (event) {
 		$.post(sp_Ajax.ajaxurl,	{
 			// wp ajax action
@@ -25,7 +23,7 @@
 		template = _.template("<li><%= data.title %> - Twitter: <%= data.twitter %>, Facebook: <%= data.facebook %>, LinkedIn: <%= data.linkedin %>, Total: <%= data.total %></li>");
 		$.post(sp_Ajax.ajaxurl,	{
 			// wp ajax action
-			action : 'sharepulse-build-stats',
+			action : 'sharepulse-build-stats-admin',
 			// vars
 			id : id,
 			// send the nonce along with the request
@@ -45,7 +43,6 @@
 	
 	$(document).ready(function () {
 		$('#rebuild').click(function (e) {
-			
 			e.preventDefault();
 			if ('undefined' !== typeof sp_Ajax.rebuild_list && !$(this).hasClass('disabled')) {
 				ids = $.parseJSON(sp_Ajax.rebuild_list);

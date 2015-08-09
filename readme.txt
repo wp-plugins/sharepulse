@@ -6,7 +6,7 @@ Tags: Twitter, LinkedIn, comments, statistics, Facebook, share, social media, so
 Author URI: http://www.jackreichert.com/
 Author: Jack Reichert
 Requires at least: 3.5
-Tested up to: 4.2.3
+Tested up to: 4.3
 Stable tag: trunk
 License: GPLv2
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
@@ -18,6 +18,8 @@ SharePulse ranks in a widget your site's posts which have had the greatest socia
 Relying on hit counts simply does not reflect the impact of your posts. SharePulse finds and ranks your site's posts that have the greatest *social* impact. The stats are gathered from Twitter, Facebook, LinkedIn as well as your own site's most commented posts measuring actual engagement. SharePulse lets you display these posts in your site's sidebar showing off your posts which have had the greatest social impact over the past day, week, month year or for all time. Each post is displayed with the total number of tweets, shares and comments.
 
 **Note:** This is the alpha for the plugin relaunch. Feedback is crucial, so please don't hesitate. We have a feature roadmap and [we want your input](http://sharepulse.net/contact/).
+
+The Facebook api has been tightened, it may not update each time. I’m working on a fix.
 
 == Installation ==
 
@@ -62,6 +64,9 @@ Praise, suggestions, comments and especially bugs found are welcome.
 Version 2.0.2 unfortunately was DOA. The APIs that were relied upon were unreliable. After much research version 3 is working well. There’s a way to go for a full product. But this is a strong MVP.
 
 == Changelog ==
+= 3.2 =
+Fixed count update to work with an ajax call.
+
 = 3.1.2 =
 * Fixed bug where drafts were included in query
 
